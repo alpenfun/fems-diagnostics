@@ -151,9 +151,11 @@ views:
                 fill_container: true
               - type: conditional
                 conditions:
-                  - entity: sensor.charger_2_leistung
+                  - condition: state
+                    entity: sensor.charger_2_leistung
                     state_not: unavailable
-                  - entity: sensor.charger_2_leistung
+                  - condition: state
+                    entity: sensor.charger_2_leistung
                     state_not: unknown
                 card:
                   type: custom:mushroom-template-card
