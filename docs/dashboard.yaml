@@ -121,6 +121,12 @@ views:
                   {% set soc = states('sensor.battery_ladezustand') | float(0)
                   %} {% if soc > 60 %} green {% elif soc > 30 %} amber {% else
                   %} red {% endif %}
+              - type: custom:mushroom-template-card
+                entity: sensor.battery_ladezyklen
+                primary: Ladezyklen
+                secondary: "{{ states('sensor.battery_ladezyklen') }}"
+                icon: mdi:battery-sync
+                fill_container: true
           - type: grid
             square: false
             columns: 2
@@ -143,6 +149,19 @@ views:
                 secondary: "{{ states('sensor.charger_1_leistung') }} W"
                 icon: mdi:solar-power
                 fill_container: true
+              - type: conditional
+                conditions:
+                  - entity: sensor.charger_2_leistung
+                    state_not: unavailable
+                  - entity: sensor.charger_2_leistung
+                    state_not: unknown
+                card:
+                  type: custom:mushroom-template-card
+                  entity: sensor.charger_2_leistung
+                  primary: PV String 3
+                  secondary: "{{ states('sensor.charger_2_leistung') }} W"
+                  icon: mdi:solar-power
+                  fill_container: true
               - type: custom:mushroom-template-card
                 entity: sensor.energy_management_netzleistung
                 primary: Netz

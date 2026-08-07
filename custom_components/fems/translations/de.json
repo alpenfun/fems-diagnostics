@@ -107,22 +107,13 @@
       "tower0_max_temperature": {
         "name": "Tower 0 Max. Temperatur"
       },
-      "charger0_power": {
+      "charger_power": {
         "name": "Leistung"
       },
-      "charger0_voltage": {
+      "charger_voltage": {
         "name": "Spannung"
       },
-      "charger0_current": {
-        "name": "Strom"
-      },
-      "charger1_power": {
-        "name": "Leistung"
-      },
-      "charger1_voltage": {
-        "name": "Spannung"
-      },
-      "charger1_current": {
+      "charger_current": {
         "name": "Strom"
       },
       "battery_run_failed": {

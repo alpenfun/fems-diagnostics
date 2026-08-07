@@ -73,11 +73,11 @@ def _device_key_from_entity_key(entity_key: str) -> str:
     }:
         return "battery_diagnose"
 
-    if entity_key.startswith("charger0_"):
-        return "charger0"
+    if entity_key.startswith("charger"):
+        prefix = entity_key.split("_", 1)[0]
 
-    if entity_key.startswith("charger1_"):
-        return "charger1"
+        if prefix.startswith("charger") and prefix[7:].isdigit():
+            return prefix
 
     if entity_key in {
         "ess_power",
@@ -157,7 +157,16 @@ class FemsCoordinatorEntity(CoordinatorEntity):
         battery_identifier = (DOMAIN, f"{entry_id}_battery")
 
         device_key = self._fems_device_key
-        device_def = _DEVICE_DEFINITIONS[device_key]
+
+        if device_key.startswith("charger") and device_key[7:].isdigit():
+            charger_id = device_key[7:]
+            device_def = {
+                "suffix": device_key,
+                "name": f"Charger {charger_id}",
+            }
+        else:
+            device_def = _DEVICE_DEFINITIONS[device_key]
+
         device_identifier = (DOMAIN, f"{entry_id}_{device_def['suffix']}")
 
         if device_key == "system":

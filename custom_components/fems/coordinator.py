@@ -67,6 +67,8 @@ class FemsDataUpdateCoordinator(DataUpdateCoordinator[FemsData]):
             DEFAULT_SCAN_INTERVAL,
         )
 
+        self.charger_ids: tuple[int, ...] | None = None
+
         session = async_get_clientsession(hass)
         self.rest_api = FemsRestApi(
             host=entry.data[CONF_REST_HOST],
@@ -88,6 +90,33 @@ class FemsDataUpdateCoordinator(DataUpdateCoordinator[FemsData]):
             update_interval=timedelta(seconds=self.scan_interval),
             always_update=False,
         )
+
+    async def _async_discover_chargers(self) -> tuple[int, ...]:
+        """Detect available FEMS charger components once at startup."""
+        charger_ids: list[int] = []
+
+        for charger_id in range(8):
+            channel = f"charger{charger_id}/ActualPower"
+
+            try:
+                result = await self.rest_api.async_fetch_group(channel)
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.debug(
+                    "FEMS charger discovery failed for charger%s: %r",
+                    charger_id,
+                    err,
+                )
+                continue
+
+            if f"charger{charger_id}/ActualPower" in result:
+                charger_ids.append(charger_id)
+
+        _LOGGER.info(
+            "Detected FEMS charger components: %s",
+            ", ".join(f"charger{i}" for i in charger_ids) or "none",
+        )
+
+        return tuple(charger_ids)
 
     def _build_rest_groups(self) -> list[str]:
         """Build REST groups for the main coordinator."""
@@ -128,13 +157,14 @@ class FemsDataUpdateCoordinator(DataUpdateCoordinator[FemsData]):
             "Tower0StatusAlarm"
             ")"
         )
-        charger0_group = "charger0/(ActualPower|Voltage|Current)"
-        charger1_group = "charger1/(ActualPower|Voltage|Current)"
+        charger_groups = [
+            f"charger{charger_id}/(ActualPower|Voltage|Current)"
+            for charger_id in (self.charger_ids or ())
+        ]
 
         return [
             battery_group,
-            charger0_group,
-            charger1_group,
+            *charger_groups,
         ]
 
     async def _async_fetch_rest_group(
@@ -150,6 +180,10 @@ class FemsDataUpdateCoordinator(DataUpdateCoordinator[FemsData]):
 
     async def _async_fetch_rest_data(self) -> dict[str, Any]:
         """Fetch all REST data and keep partial results."""
+
+        if self.charger_ids is None:
+            self.charger_ids = await self._async_discover_chargers()
+
         groups = self._build_rest_groups()
         rest: dict[str, Any] = {}
         errors: list[tuple[str, Exception]] = []

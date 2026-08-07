@@ -71,6 +71,7 @@ def _build_main_coordinator() -> MagicMock:
         "ess_active_power": 1234.0,
     }
     coordinator.last_update_success = True
+    coordinator.charger_ids = (0, 1, 2)
     return coordinator
 
 
@@ -170,3 +171,48 @@ async def test_only_configured_modules_create_cell_entities(hass: HomeAssistant)
     assert any("tower0_module0_cell000_voltage" in unique_id.lower() for unique_id in entity_unique_ids)
     assert any("tower0_module1_cell000_voltage" in unique_id.lower() for unique_id in entity_unique_ids)
     assert not any("tower0_module2_" in unique_id.lower() for unique_id in entity_unique_ids)
+
+async def test_dynamic_charger_entities_created(
+    hass: HomeAssistant,
+) -> None:
+    """Test that sensors are created for all detected chargers."""
+    entry = _build_entry(
+        enable_cell_voltages=False,
+        battery_module_count=2,
+    )
+    entry.add_to_hass(hass)
+
+    main_coordinator = _build_main_coordinator()
+    main_coordinator.entry = entry
+    main_coordinator.charger_ids = (0, 1, 2)
+
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN][entry.entry_id] = main_coordinator
+    hass.data[DOMAIN][f"{entry.entry_id}_diagnostics"] = (
+        _build_diagnostics_coordinator(
+            battery_module_count=2,
+            include_cell_voltages=False,
+        )
+    )
+
+    added_entities = []
+
+    def _capture_add_entities(entities):
+        added_entities.extend(entities)
+
+    await async_setup_entry(
+        hass,
+        entry,
+        _capture_add_entities,
+    )
+
+    entity_unique_ids = {
+        entity.unique_id
+        for entity in added_entities
+        if hasattr(entity, "unique_id")
+    }
+
+    for charger_id in (0, 1, 2):
+        assert f"fems-test-entry_charger{charger_id}_power" in entity_unique_ids
+        assert f"fems-test-entry_charger{charger_id}_voltage" in entity_unique_ids
+        assert f"fems-test-entry_charger{charger_id}_current" in entity_unique_ids

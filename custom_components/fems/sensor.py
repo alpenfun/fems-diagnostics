@@ -173,6 +173,92 @@ def _battery_cell_voltage_spread_status(
 
     return _evaluate_spread(spread, soc, current)
 
+def _charger_value_fn(
+    charger_id: int,
+    channel: str,
+) -> Callable[[Any], Any]:
+    """Create value function for one charger channel."""
+    rest_key = f"charger{charger_id}/{channel}"
+
+    def value_fn(coordinator: Any) -> Any:
+        return _rest_value(coordinator, rest_key)
+
+    return value_fn
+
+
+def _charger_scaled_value_fn(
+    charger_id: int,
+    channel: str,
+    divisor: float,
+    precision: int,
+) -> Callable[[Any], float | None]:
+    """Create scaled value function for one charger channel."""
+    rest_key = f"charger{charger_id}/{channel}"
+
+    def value_fn(coordinator: Any) -> float | None:
+        return _scaled_rest_value(
+            coordinator,
+            rest_key,
+            divisor,
+            precision,
+        )
+
+    return value_fn
+
+
+def _build_charger_sensors(
+    charger_ids: tuple[int, ...],
+) -> list[FemsSensorDescription]:
+    """Build sensors dynamically for detected FEMS chargers."""
+    sensors: list[FemsSensorDescription] = []
+
+    for charger_id in charger_ids:
+        sensors.extend(
+            [
+                FemsSensorDescription(
+                    key=f"charger{charger_id}_power",
+                    translation_key="charger_power",
+                    native_unit_of_measurement=UnitOfPower.WATT,
+                    device_class=SensorDeviceClass.POWER,
+                    state_class=SensorStateClass.MEASUREMENT,
+                    value_fn=_charger_value_fn(
+                        charger_id,
+                        "ActualPower",
+                    ),
+                    available_fn=_rest_available,
+                ),
+                FemsSensorDescription(
+                    key=f"charger{charger_id}_voltage",
+                    translation_key="charger_voltage",
+                    native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+                    device_class=SensorDeviceClass.VOLTAGE,
+                    state_class=SensorStateClass.MEASUREMENT,
+                    value_fn=_charger_scaled_value_fn(
+                        charger_id,
+                        "Voltage",
+                        1000,
+                        1,
+                    ),
+                    available_fn=_rest_available,
+                ),
+                FemsSensorDescription(
+                    key=f"charger{charger_id}_current",
+                    translation_key="charger_current",
+                    native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+                    device_class=SensorDeviceClass.CURRENT,
+                    state_class=SensorStateClass.MEASUREMENT,
+                    value_fn=_charger_scaled_value_fn(
+                        charger_id,
+                        "Current",
+                        1000,
+                        1,
+                    ),
+                    available_fn=_rest_available,
+                ),
+            ]
+        )
+
+    return sensors
 BASE_SENSORS: tuple[FemsSensorDescription, ...] = (
     FemsSensorDescription(
         key="battery_soc",
@@ -348,60 +434,14 @@ BASE_SENSORS: tuple[FemsSensorDescription, ...] = (
         value_fn=lambda c: _scaled_rest_value(c, "battery0/Tower0MaxTemperature", 10, 1),
         available_fn=_rest_available,
     ),
-    FemsSensorDescription(
-        key="charger0_power",
-        translation_key="charger0_power",
-        native_unit_of_measurement=UnitOfPower.WATT,
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda c: _rest_value(c, "charger0/ActualPower"),
-        available_fn=_rest_available,
-    ),
-    FemsSensorDescription(
-        key="charger0_voltage",
-        translation_key="charger0_voltage",
-        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
-        device_class=SensorDeviceClass.VOLTAGE,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda c: _scaled_rest_value(c, "charger0/Voltage", 1000, 1),
-        available_fn=_rest_available,
-    ),
-    FemsSensorDescription(
-        key="charger0_current",
-        translation_key="charger0_current",
-        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        device_class=SensorDeviceClass.CURRENT,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda c: _scaled_rest_value(c, "charger0/Current", 1000, 1),
-        available_fn=_rest_available,
-    ),
-    FemsSensorDescription(
-        key="charger1_power",
-        translation_key="charger1_power",
-        native_unit_of_measurement=UnitOfPower.WATT,
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda c: _rest_value(c, "charger1/ActualPower"),
-        available_fn=_rest_available,
-    ),
-    FemsSensorDescription(
-        key="charger1_voltage",
-        translation_key="charger1_voltage",
-        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
-        device_class=SensorDeviceClass.VOLTAGE,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda c: _scaled_rest_value(c, "charger1/Voltage", 1000, 1),
-        available_fn=_rest_available,
-    ),
-    FemsSensorDescription(
-        key="charger1_current",
-        translation_key="charger1_current",
-        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        device_class=SensorDeviceClass.CURRENT,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda c: _scaled_rest_value(c, "charger1/Current", 1000, 1),
-        available_fn=_rest_available,
-    ),
+
+
+
+
+
+
+
+
     FemsSensorDescription(
         key="battery_run_failed",
         translation_key="battery_run_failed",
@@ -851,6 +891,14 @@ async def async_setup_entry(
         for description in BASE_SENSORS
     ]
 
+    charger_descriptions = _build_charger_sensors(
+        coordinator.charger_ids or ()
+    )
+
+    charger_entities = [
+        FemsSensorEntity(coordinator, description)
+        for description in charger_descriptions
+    ]
     diagnostics_descriptions = [
         *_build_module_spread_sensors(module_count),
     ]
@@ -868,8 +916,13 @@ async def async_setup_entry(
         for description in diagnostics_descriptions
     ]
 
-    async_add_entities([*base_entities, *diagnostics_entities])
-
+    async_add_entities(
+        [
+            *base_entities,
+            *charger_entities,
+            *diagnostics_entities,
+        ]
+    )
 
 class FemsSensorEntity(FemsCoordinatorEntity, SensorEntity):
     """Representation of a FEMS sensor."""
