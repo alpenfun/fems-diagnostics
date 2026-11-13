@@ -150,12 +150,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     device_registry = dr.async_get(hass)
-    device_registry.async_get_or_create(
+    system_device = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, f"{entry.entry_id}_system")},
         manufacturer=MANUFACTURER,
         model=MODEL,
         name="FEMS System",
+    )
+
+    # Register the battery parent before entities create diagnostic devices.
+    device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, f"{entry.entry_id}_battery")},
+        manufacturer=MANUFACTURER,
+        model=MODEL,
+        name="Battery",
+        via_device_id=system_device.id,
     )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
