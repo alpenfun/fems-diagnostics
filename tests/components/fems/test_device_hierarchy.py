@@ -52,5 +52,9 @@ async def test_device_info_uses_parent_device_id(
     expected_parent_id = (
         battery_device.id if parent == "battery" else system_device.id
     )
-    assert info.via_device_id == expected_parent_id
-    assert info.identifiers == {(DOMAIN, f"{entry.entry_id}_{device_suffix}")}
+    # DeviceInfo is a dict in HA 2026.10 and a dataclass in HA 2026.11+.
+    device_info = info if isinstance(info, dict) else info.as_dict()
+    assert device_info["via_device_id"] == expected_parent_id
+    assert device_info["identifiers"] == {
+        (DOMAIN, f"{entry.entry_id}_{device_suffix}")
+    }
