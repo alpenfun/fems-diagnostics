@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -177,28 +178,23 @@ class FemsCoordinatorEntity(CoordinatorEntity):
                 model=MODEL,
             )
 
-        if device_key == "battery":
-            return DeviceInfo(
-                identifiers={battery_identifier},
-                name=_DEVICE_DEFINITIONS["battery"]["name"],
-                manufacturer=MANUFACTURER,
-                model=MODEL,
-                via_device=system_identifier,
-            )
-
-        if device_key in {"battery_diagnose", "cell_diagnose"}:
-            return DeviceInfo(
-                identifiers={device_identifier},
-                name=device_def["name"],
-                manufacturer=MANUFACTURER,
-                model=MODEL,
-                via_device=battery_identifier,
-            )
+        # Resolve the parent by its scoped identifier, not via the deprecated
+        # DeviceInfo.via_device identifier tuple.
+        parent_identifier = (
+            battery_identifier
+            if device_key in {"battery_diagnose", "cell_diagnose"}
+            else system_identifier
+        )
+        parent_device_id = dr.async_get_device_id_by_identifier(
+            self.coordinator.hass,
+            parent_identifier,
+            config_entry_id=entry_id,
+        )
 
         return DeviceInfo(
             identifiers={device_identifier},
             name=device_def["name"],
             manufacturer=MANUFACTURER,
             model=MODEL,
-            via_device=system_identifier,
+            via_device_id=parent_device_id,
         )
