@@ -14,7 +14,7 @@ from custom_components.fems.entity import FemsCoordinatorEntity
 @pytest.mark.parametrize(
     ("entity_key", "device_suffix", "parent"),
     [
-        ("battery_soc", "battery", "battery"),
+        ("battery_soc", "battery", "system"),
         ("fault_status", "battery_diagnose", "battery"),
         ("tower0_module0_cell000_voltage", "cell_diagnose", "battery"),
         ("charger0_actual_power", "charger0", "system"),
