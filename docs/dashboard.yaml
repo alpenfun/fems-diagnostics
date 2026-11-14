@@ -320,16 +320,16 @@ views:
             heading: Moduldiagnose (ΔU)
             heading_style: title
           - type: markdown
-            content: >-
-              ℹ️ **Hinweis zur Zellspannungsdifferenz (ΔU)**   Die Bewertung
-              basiert auf allgemeinen Erfahrungswerten für
-              Lithium-Ionen-Batterien   und ist **keine offizielle
-              FENECON-Diagnose**.  
+            content: |-
+              ℹ️ **Hinweis zur Zellspannungsdifferenz (ΔU)**
 
-              Höhere Werte können normal sein bei: - niedrigem Ladezustand   -
-              hoher Last oder Ladeleistung  
+              Die Bewertung basiert auf allgemeinen Erfahrungswerten für Lithium-Ionen-Batterien und ist **keine offizielle FENECON-Diagnose**.
 
-                  👉 [Weitere Informationen zur ΔU-Interpretation](https://github.com/alpenfun/fems-diagnostics#-cell-voltage-spread-δu--δv-interpretation)
+              Höhere Werte können normal sein bei:
+              - niedrigem Ladezustand
+              - hoher Last oder Ladeleistung
+
+              👉 [Weitere Informationen zur ΔU-Interpretation](https://github.com/alpenfun/fems-diagnostics#-cell-voltage-spread-δu--δv-interpretation)
           - square: false
             type: grid
             columns: 5
