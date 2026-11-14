@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from homeassistant.helpers import device_registry as dr
 
 from custom_components.fems import async_migrate_entry, async_setup_entry, async_unload_entry
 from custom_components.fems.const import (
@@ -79,6 +80,16 @@ async def test_setup_and_unload_entry_smoke(
 
     mock_main_coordinator.async_config_entry_first_refresh.assert_awaited_once()
     mock_diag_coordinator.async_config_entry_first_refresh.assert_awaited_once()
+
+    system_id = dr.async_get_device_id_by_identifier(
+        hass, (DOMAIN, f"{mock_config_entry.entry_id}_system"),
+        config_entry_id=mock_config_entry.entry_id,
+    )
+    battery_id = dr.async_get_device_id_by_identifier(
+        hass, (DOMAIN, f"{mock_config_entry.entry_id}_battery"),
+        config_entry_id=mock_config_entry.entry_id,
+    )
+    assert dr.async_get(hass).async_get(battery_id).via_device_id == system_id
 
     assert await async_unload_entry(hass, mock_config_entry) is True
     assert mock_config_entry.entry_id not in hass.data[DOMAIN]
