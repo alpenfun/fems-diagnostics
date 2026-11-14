@@ -40,6 +40,8 @@
 - Batterie-Zustandsüberwachung
 - Diagnose von Fehlern und Warnungen
 - Spezielles Diagnose-Dashboard
+- Automatische Erkennung vorhandener PV-Laderegler (auch Charger 2+)
+- Gerätehierarchie kompatibel mit aktueller Home-Assistant-API
 
 ### 📥 Installation (Kurzfassung)
 1. HACS installieren
@@ -263,10 +265,10 @@ The configuration flow currently exposes these setup parameters directly in Home
 
 ## 🧩 Created devices
 
-The integration creates six logical devices:
+The integration creates a hierarchy of logical devices:
+- 🖥️ FEMS System
 - 🔋 Battery
-- ⚡ Charger 0
-- ⚡ Charger 1
+- ⚡ Charger devices discovered dynamically (Charger 0, Charger 1, Charger 2, etc., if available)
 - 🧠 Diagnostics
 - 📊 Energy management
 - 🔬 Cells

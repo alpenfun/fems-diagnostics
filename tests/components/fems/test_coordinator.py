@@ -116,3 +116,63 @@ async def test_diagnostics_coordinator_returns_mock_data(hass, mock_config_entry
     assert "battery0/Tower0Module0Cell000Voltage" in data.rest
     assert data.rest["battery0/Tower0Module0Cell001Voltage"] == 3283
     fake_rest_api.async_fetch_group.assert_awaited_once()
+
+async def test_build_rest_groups_uses_detected_chargers(
+    hass,
+    mock_config_entry,
+) -> None:
+    """Test REST groups are built for all detected chargers."""
+    mock_config_entry.add_to_hass(hass)
+
+    with (
+        patch(
+            "custom_components.fems.coordinator.async_get_clientsession",
+            return_value=MagicMock(),
+        ),
+        patch("custom_components.fems.coordinator.FemsRestApi"),
+        patch("custom_components.fems.coordinator.FemsModbusApi"),
+    ):
+        coordinator = FemsDataUpdateCoordinator(hass, mock_config_entry)
+
+    coordinator.charger_ids = (0, 1, 2)
+
+    groups = coordinator._build_rest_groups()
+
+    assert "charger0/(ActualPower|Voltage|Current)" in groups
+    assert "charger1/(ActualPower|Voltage|Current)" in groups
+    assert "charger2/(ActualPower|Voltage|Current)" in groups
+    assert len(
+        [group for group in groups if group.startswith("charger")]
+    ) == 3
+
+async def test_discover_chargers_detects_only_available_components(
+    hass,
+    mock_config_entry,
+) -> None:
+    """Test charger discovery detects only available charger components."""
+    mock_config_entry.add_to_hass(hass)
+
+    with (
+        patch(
+            "custom_components.fems.coordinator.async_get_clientsession",
+            return_value=MagicMock(),
+        ),
+        patch("custom_components.fems.coordinator.FemsRestApi"),
+        patch("custom_components.fems.coordinator.FemsModbusApi"),
+    ):
+        coordinator = FemsDataUpdateCoordinator(hass, mock_config_entry)
+
+    async def _fake_fetch_group(group: str):
+        if group == "charger0/ActualPower":
+            return {"charger0/ActualPower": 100}
+        if group == "charger1/ActualPower":
+            return {"charger1/ActualPower": 200}
+        if group == "charger2/ActualPower":
+            return {"charger2/ActualPower": 300}
+        raise RuntimeError("charger not available")
+
+    coordinator.rest_api.async_fetch_group = AsyncMock(side_effect=_fake_fetch_group)
+
+    charger_ids = await coordinator._async_discover_chargers()
+
+    assert charger_ids == (0, 1, 2)

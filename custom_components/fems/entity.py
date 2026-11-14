@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -73,11 +74,11 @@ def _device_key_from_entity_key(entity_key: str) -> str:
     }:
         return "battery_diagnose"
 
-    if entity_key.startswith("charger0_"):
-        return "charger0"
+    if entity_key.startswith("charger"):
+        prefix = entity_key.split("_", 1)[0]
 
-    if entity_key.startswith("charger1_"):
-        return "charger1"
+        if prefix.startswith("charger") and prefix[7:].isdigit():
+            return prefix
 
     if entity_key in {
         "ess_power",
@@ -157,7 +158,16 @@ class FemsCoordinatorEntity(CoordinatorEntity):
         battery_identifier = (DOMAIN, f"{entry_id}_battery")
 
         device_key = self._fems_device_key
-        device_def = _DEVICE_DEFINITIONS[device_key]
+
+        if device_key.startswith("charger") and device_key[7:].isdigit():
+            charger_id = device_key[7:]
+            device_def = {
+                "suffix": device_key,
+                "name": f"Charger {charger_id}",
+            }
+        else:
+            device_def = _DEVICE_DEFINITIONS[device_key]
+
         device_identifier = (DOMAIN, f"{entry_id}_{device_def['suffix']}")
 
         if device_key == "system":
@@ -168,28 +178,23 @@ class FemsCoordinatorEntity(CoordinatorEntity):
                 model=MODEL,
             )
 
-        if device_key == "battery":
-            return DeviceInfo(
-                identifiers={battery_identifier},
-                name=_DEVICE_DEFINITIONS["battery"]["name"],
-                manufacturer=MANUFACTURER,
-                model=MODEL,
-                via_device=system_identifier,
-            )
-
-        if device_key in {"battery_diagnose", "cell_diagnose"}:
-            return DeviceInfo(
-                identifiers={device_identifier},
-                name=device_def["name"],
-                manufacturer=MANUFACTURER,
-                model=MODEL,
-                via_device=battery_identifier,
-            )
+        # Resolve the parent by its scoped identifier, not via the deprecated
+        # DeviceInfo.via_device identifier tuple.
+        parent_identifier = (
+            battery_identifier
+            if device_key in {"battery_diagnose", "cell_diagnose"}
+            else system_identifier
+        )
+        parent_device_id = dr.async_get_device_id_by_identifier(
+            self.coordinator.hass,
+            parent_identifier,
+            config_entry_id=entry_id,
+        )
 
         return DeviceInfo(
             identifiers={device_identifier},
             name=device_def["name"],
             manufacturer=MANUFACTURER,
             model=MODEL,
-            via_device=system_identifier,
+            via_device_id=parent_device_id,
         )
