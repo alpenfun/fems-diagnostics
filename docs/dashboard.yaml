@@ -329,7 +329,7 @@ views:
               - niedrigem Ladezustand
               - hoher Last oder Ladeleistung
 
-              👉 [Weitere Informationen zur ΔU-Interpretation](https://github.com/alpenfun/fems-diagnostics#-cell-voltage-spread-δu--δv-interpretation)
+              👉 [Weitere Informationen zur ΔU-Interpretation](https://github.com/alpenfun/fems-diagnostics/blob/main/README.md#-status-logic)
           - square: false
             type: grid
             columns: 5
